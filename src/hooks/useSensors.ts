@@ -7,50 +7,77 @@ export const useSensors = (tg: any) => {
     beta: 0,
     gamma: 0,
   });
+  const [accelerometerAvailable, setAccelerometerAvailable] =
+    useState<boolean>(false);
+  const [orientationAvailable, setOrientationAvailable] =
+    useState<boolean>(false);
 
   useEffect(() => {
     if (!tg) return;
 
-    const handleAcceleration = () => {
-      setAcceleration({
-        x: tg.Accelerometer.x,
-        y: tg.Accelerometer.y,
-        z: tg.Accelerometer.z,
+    // Check if Accelerometer is available
+    if (tg.Accelerometer && tg.onEvent) {
+      tg.Accelerometer.start({ refresh_rate: 100 }, (started: boolean) => {
+        if (started) {
+          setAccelerometerAvailable(true);
+          tg.onEvent("accelerometerChanged", () => {
+            setAcceleration({
+              x: tg.Accelerometer.x,
+              y: tg.Accelerometer.y,
+              z: tg.Accelerometer.z,
+            });
+          });
+        } else {
+          console.error("Accelerometer not started");
+          setAccelerometerAvailable(false);
+        }
       });
-    };
+    } else {
+      console.error("Accelerometer not supported");
+      setAccelerometerAvailable(false);
+    }
 
-    const handleOrientation = () => {
-      setOrientation({
-        alpha: tg.DeviceOrientation.alpha,
-        beta: tg.DeviceOrientation.beta,
-        gamma: tg.DeviceOrientation.gamma,
+    // Check if DeviceOrientation is available
+    if (tg.DeviceOrientation && tg.onEvent) {
+      tg.DeviceOrientation.start({ refresh_rate: 100 }, (started: boolean) => {
+        if (started) {
+          setOrientationAvailable(true);
+          tg.onEvent("deviceOrientationChanged", () => {
+            setOrientation({
+              alpha: tg.DeviceOrientation.alpha,
+              beta: tg.DeviceOrientation.beta,
+              gamma: tg.DeviceOrientation.gamma,
+            });
+          });
+        } else {
+          console.error("DeviceOrientation not started");
+          setOrientationAvailable(false);
+        }
       });
-    };
-
-    tg.Accelerometer.start({ refresh_rate: 100 }, (started: boolean) => {
-      if (started) {
-        tg.onEvent("accelerometer", handleAcceleration);
-      } else {
-        console.error("Accelerometer not started");
-      }
-    });
-
-    tg.DeviceOrientation.start({ refresh_rate: 100 }, (started: boolean) => {
-      if (started) {
-        tg.onEvent("device_orientation", handleOrientation);
-      } else {
-        console.error("DeviceOrientation not started");
-      }
-    });
+    } else {
+      console.error("DeviceOrientation not supported");
+      setOrientationAvailable(false);
+    }
 
     // Cleanup
     return () => {
-      tg.Accelerometer.stop();
-      tg.DeviceOrientation.stop();
-      tg.offEvent("accelerometer", handleAcceleration);
-      tg.offEvent("device_orientation", handleOrientation);
+      if (tg.Accelerometer && tg.Accelerometer.stop) {
+        tg.Accelerometer.stop();
+      }
+      if (tg.DeviceOrientation && tg.DeviceOrientation.stop) {
+        tg.DeviceOrientation.stop();
+      }
+      if (tg.offEvent) {
+        tg.offEvent("accelerometerChanged");
+        tg.offEvent("deviceOrientationChanged");
+      }
     };
   }, [tg]);
 
-  return { acceleration, orientation };
+  return {
+    acceleration,
+    orientation,
+    accelerometerAvailable,
+    orientationAvailable,
+  };
 };
