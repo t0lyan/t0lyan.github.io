@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { useTelegram } from "./hooks/useTelegram";
+import { motion } from "framer-motion";
+import React, { useCallback, useEffect, useState } from "react";
+import Confetti from "react-confetti";
 import { useSensors } from "./hooks/useSensors";
 import { useShakeDetection } from "./hooks/useShakeDetection";
-import { motion } from "framer-motion";
-import Confetti from "react-confetti";
+import { useTelegram } from "./hooks/useTelegram";
 
 const App: React.FC = () => {
   const tg = useTelegram();
@@ -295,7 +295,31 @@ const App: React.FC = () => {
             fill="url(#svgGradient)"
             stroke="none"
           >
-            {/* [Your SVG paths go here] */}
+            <path
+              d="M3279 9371 c-237 -76 -526 -294 -696 -526 -177 -242 -348 -714 -370
+-1024 l-6 -91 1282 0 1281 0 0 49 c0 157 -83 476 -186 719 -100 234 -166 334
+-323 493 -186 187 -372 312 -553 373 -119 40 -112 46 -132 -96 -20 -150 -42
+-231 -68 -254 -18 -17 -20 -17 -38 2 -25 24 -54 138 -70 272 -12 101 -13 102
+-39 101 -14 0 -51 -8 -82 -18z"
+            />
+            <path
+              d="M2210 5480 l0 -2030 88 0 c228 0 524 -94 749 -237 142 -90 320 -250
+419 -376 l29 -39 32 44 c115 159 322 332 533 445 167 89 377 150 545 159 55 3
+115 7 133 10 l32 5 0 2024 0 2025 -1280 0 -1280 0 0 -2030z"
+            />
+            <path
+              d="M2066 3230 c-354 -45 -664 -212 -885 -476 -405 -485 -424 -1170 -48
+-1677 225 -303 557 -491 952 -537 216 -26 487 21 704 122 194 89 412 271 527
+438 l52 75 -19 35 c-65 123 -123 320 -144 490 -37 300 2 554 125 824 36 78 35
+81 -26 162 -176 232 -390 388 -659 480 -161 56 -419 84 -579 64z"
+            />
+            <path
+              d="M4660 3234 c-252 -29 -442 -94 -620 -210 -84 -55 -236 -179 -265
+-216 -6 -7 -31 -38 -56 -68 -66 -77 -151 -216 -192 -313 -183 -424 -141 -902
+110 -1287 168 -256 434 -456 723 -543 257 -77 482 -84 735 -21 303 75 567 252
+752 501 377 508 357 1189 -48 1676 -247 297 -601 468 -994 481 -60 3 -126 2
+-145 0z"
+            />
           </g>
         </svg>
       </motion.div>
