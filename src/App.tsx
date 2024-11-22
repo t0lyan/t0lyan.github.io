@@ -19,11 +19,23 @@ const App: React.FC = () => {
 
   const [isDesktop, setIsDesktop] = useState<boolean>(false);
 
-  // Load global score from cloud storage
+  // Ensure that tg is ready before proceeding
   useEffect(() => {
     if (!tg) return;
+
     tg.ready();
 
+    // Expand the Mini App to maximum height
+    if (tg.expand) {
+      tg.expand();
+    }
+
+    // Lock the orientation to the current mode
+    if (tg.lockOrientation) {
+      tg.lockOrientation();
+    }
+
+    // Load global score from cloud storage
     tg.CloudStorage.getItem("globalScore", (error: any, value: string) => {
       if (!error && value) {
         setGlobalScore(parseInt(value, 10));
@@ -63,7 +75,9 @@ const App: React.FC = () => {
           setIsSessionActive(false);
           startCooldown(sessionDuration);
           // Haptic Feedback
-          tg.HapticFeedback.notificationOccurred("success");
+          if (tg.HapticFeedback) {
+            tg.HapticFeedback.notificationOccurred("success");
+          }
         }
         return newSessionScore;
       });
@@ -76,7 +90,9 @@ const App: React.FC = () => {
       });
 
       // Haptic Feedback
-      tg.HapticFeedback.impactOccurred("medium");
+      if (tg.HapticFeedback) {
+        tg.HapticFeedback.impactOccurred("medium");
+      }
 
       // Play sound effect
       playShakeSound();
@@ -135,12 +151,40 @@ const App: React.FC = () => {
 
   // Leaderboard sharing
   const shareScore = () => {
-    if (tg) {
+    if (tg && tg.shareToStory) {
       tg.shareToStory("https://yourgameurl.com", {
         text: `I just scored ${globalScore} points! Can you beat me?`,
       });
     }
   };
+
+  // Desktop: Simulate shaking via scroll
+  useEffect(() => {
+    if (isDesktop) {
+      let lastScrollTop = 0;
+      const handleScroll = () => {
+        const scrollTop =
+          window.pageYOffset || document.documentElement.scrollTop;
+        const delta = Math.abs(scrollTop - lastScrollTop);
+        if (delta > 50) {
+          handleShake();
+        }
+        lastScrollTop = scrollTop <= 0 ? 0 : scrollTop;
+      };
+      window.addEventListener("scroll", handleScroll);
+      return () => window.removeEventListener("scroll", handleScroll);
+    }
+  }, [isDesktop, handleShake]);
+
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      if (tg && tg.unlockOrientation) {
+        // Unlock orientation on unmount
+        tg.unlockOrientation();
+      }
+    };
+  }, [tg]);
 
   return (
     <div
@@ -195,6 +239,7 @@ const App: React.FC = () => {
           transformStyle: "preserve-3d",
         }}
       >
+        {/* Your SVG code goes here */}
         <svg
           width="200"
           height="200"
