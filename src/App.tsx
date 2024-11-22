@@ -1,18 +1,10 @@
 import { motion } from "framer-motion";
 import React, { useCallback, useEffect, useState } from "react";
 import Confetti from "react-confetti";
-import { useSensors } from "./hooks/useSensors";
-import { useShakeDetection } from "./hooks/useShakeDetection";
 import { useTelegram } from "./hooks/useTelegram";
 
 const App: React.FC = () => {
   const tg = useTelegram();
-  const {
-    acceleration,
-    orientation,
-    accelerometerAvailable,
-    orientationAvailable,
-  } = useSensors(tg);
 
   const [globalScore, setGlobalScore] = useState<number>(0);
   const [sessionScore, setSessionScore] = useState<number>(0);
@@ -22,7 +14,8 @@ const App: React.FC = () => {
   const [shakeAnimation, setShakeAnimation] = useState<boolean>(false);
   const [isFirstTimeUser, setIsFirstTimeUser] = useState<boolean>(true);
 
-  const [isDesktop, setIsDesktop] = useState<boolean>(false);
+  const [, setIsDesktop] = useState<boolean>(false);
+  const [debugInfo, setDebugInfo] = useState<any>({});
 
   // Ensure that tg is ready before proceeding
   useEffect(() => {
@@ -131,8 +124,6 @@ const App: React.FC = () => {
     }, 1000);
   };
 
-  useShakeDetection(acceleration, handleShake, isDesktop);
-
   // Handle shake animation reset
   useEffect(() => {
     if (shakeAnimation) {
@@ -146,9 +137,9 @@ const App: React.FC = () => {
   const sessionScale = isSessionActive ? 1 + (sessionScore / 1000) * 0.5 : 1;
   const totalScale = globalScale * sessionScale;
 
-  // Apply rotations
-  const rotateX = orientation.beta || 0;
-  const rotateY = orientation.gamma || 0;
+  // Apply rotations (since orientation data is unavailable, set to zero)
+  const rotateX = 0;
+  const rotateY = 0;
 
   // Function to play shake sound effect
   const playShakeSound = () => {
@@ -168,47 +159,76 @@ const App: React.FC = () => {
     }
   };
 
-  // Desktop: Simulate shaking via scroll or touch
+  // Alternative Shake Detection (Desktop and Mobile)
   useEffect(() => {
-    if (isDesktop || !accelerometerAvailable) {
-      let lastScrollTop = 0;
-      const handleScroll = () => {
-        const scrollTop =
-          window.pageYOffset || document.documentElement.scrollTop;
-        const delta = Math.abs(scrollTop - lastScrollTop);
-        if (delta > 50) {
+    let lastDirection: "up" | "down" | null = null;
+    let directionChangeCount = 0;
+
+    const handleGesture = (deltaY: number) => {
+      const direction = deltaY > 0 ? "down" : "up";
+
+      if (lastDirection && direction !== lastDirection) {
+        directionChangeCount += 1;
+
+        if (directionChangeCount >= 2) {
           handleShake();
+          directionChangeCount = 0;
         }
-        lastScrollTop = scrollTop <= 0 ? 0 : scrollTop;
-      };
-      window.addEventListener("scroll", handleScroll);
+      }
 
-      // Touch swipe detection
-      let touchStartY = 0;
-      let touchEndY = 0;
+      lastDirection = direction;
+    };
 
-      const handleTouchStart = (e: TouchEvent) => {
-        touchStartY = e.changedTouches[0].screenY;
-      };
+    // Prevent default scrolling
+    const preventDefault = (e: Event) => e.preventDefault();
 
-      const handleTouchEnd = (e: TouchEvent) => {
-        touchEndY = e.changedTouches[0].screenY;
-        const deltaY = Math.abs(touchEndY - touchStartY);
-        if (deltaY > 50) {
+    // Desktop: Wheel Event
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      handleGesture(e.deltaY);
+    };
+
+    // Mobile: Touch Events
+    let touchStartY = 0;
+    let lastTouchDirection: "up" | "down" | null = null;
+    let touchDirectionChangeCount = 0;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      e.preventDefault();
+      touchStartY = e.touches[0].clientY;
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      e.preventDefault();
+      const touchEndY = e.touches[0].clientY;
+      const deltaY = touchEndY - touchStartY;
+      const direction = deltaY > 0 ? "down" : "up";
+
+      if (lastTouchDirection && direction !== lastTouchDirection) {
+        touchDirectionChangeCount += 1;
+
+        if (touchDirectionChangeCount >= 2) {
           handleShake();
+          touchDirectionChangeCount = 0;
         }
-      };
+      }
 
-      window.addEventListener("touchstart", handleTouchStart);
-      window.addEventListener("touchend", handleTouchEnd);
+      lastTouchDirection = direction;
+      touchStartY = touchEndY; // Update for continuous movement
+    };
 
-      return () => {
-        window.removeEventListener("scroll", handleScroll);
-        window.removeEventListener("touchstart", handleTouchStart);
-        window.removeEventListener("touchend", handleTouchEnd);
-      };
-    }
-  }, [isDesktop, handleShake, accelerometerAvailable]);
+    window.addEventListener("wheel", handleWheel, { passive: false });
+    window.addEventListener("touchstart", handleTouchStart, { passive: false });
+    window.addEventListener("touchmove", handleTouchMove, { passive: false });
+    window.addEventListener("scroll", preventDefault, { passive: false });
+
+    return () => {
+      window.removeEventListener("wheel", handleWheel);
+      window.removeEventListener("touchstart", handleTouchStart);
+      window.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("scroll", preventDefault);
+    };
+  }, [handleShake]);
 
   // Clean up on unmount
   useEffect(() => {
@@ -222,6 +242,13 @@ const App: React.FC = () => {
       }
     };
   }, [tg]);
+
+  // Update debug information
+  useEffect(() => {
+    setDebugInfo({
+      lastDirection: "N/A", // Since we don't have accelerometer data
+    });
+  }, []);
 
   return (
     <div
@@ -258,9 +285,7 @@ const App: React.FC = () => {
         <div className="absolute bottom-10 bg-gray-800 bg-opacity-75 text-white text-center rounded-lg p-4 mx-4">
           <p className="font-semibold">Welcome!</p>
           <p className="text-sm mt-1">
-            {accelerometerAvailable
-              ? "Shake your phone to increase your score!"
-              : "Swipe up and down to increase your score!"}
+            Swipe up and down rapidly to increase your score!
           </p>
         </div>
       )}
@@ -319,7 +344,7 @@ const App: React.FC = () => {
 110 -1287 168 -256 434 -456 723 -543 257 -77 482 -84 735 -21 303 75 567 252
 752 501 377 508 357 1189 -48 1676 -247 297 -601 468 -994 481 -60 3 -126 2
 -145 0z"
-            />
+            />{" "}
           </g>
         </svg>
       </motion.div>
@@ -351,18 +376,9 @@ const App: React.FC = () => {
 
       {/* Debugging Information */}
       <div className="absolute top-4 right-4 bg-gray-800 bg-opacity-75 rounded-lg p-4 text-white text-xs">
-        <p>Accelerometer Available: {accelerometerAvailable ? "Yes" : "No"}</p>
-        <p>Acceleration:</p>
-        <p>X: {acceleration.x.toFixed(2)}</p>
-        <p>Y: {acceleration.y.toFixed(2)}</p>
-        <p>Z: {acceleration.z.toFixed(2)}</p>
-        <p className="mt-2">
-          Orientation Available: {orientationAvailable ? "Yes" : "No"}
-        </p>
-        <p>Orientation:</p>
-        <p>Alpha: {orientation.alpha?.toFixed(2)}</p>
-        <p>Beta: {orientation.beta?.toFixed(2)}</p>
-        <p>Gamma: {orientation.gamma?.toFixed(2)}</p>
+        <p>Debug Info:</p>
+        <p>Last Direction: {debugInfo.lastDirection}</p>
+        {/* Add more debug info if needed */}
       </div>
     </div>
   );
