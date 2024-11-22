@@ -2,13 +2,15 @@ import { useEffect, useRef } from "react";
 
 export const useShakeDetection = (
   acceleration: { x: number; y: number; z: number },
-  onShake: () => void
+  onShake: () => void,
+  isDesktop: boolean
 ) => {
   const lastAcceleration = useRef(acceleration);
-  const shakeThreshold = 15; // Adjust based on testing
+  const shakeThreshold = 15; // Adjust as needed
   const shakeCooldown = useRef(false);
 
   useEffect(() => {
+    if (isDesktop) return; // Skip shake detection on desktop (handled via scroll)
     const deltaX = Math.abs(acceleration.x - lastAcceleration.current.x);
     const deltaY = Math.abs(acceleration.y - lastAcceleration.current.y);
     const deltaZ = Math.abs(acceleration.z - lastAcceleration.current.z);
@@ -17,12 +19,11 @@ export const useShakeDetection = (
       shakeCooldown.current = true;
       onShake();
 
-      // Cooldown to prevent multiple triggers
       setTimeout(() => {
         shakeCooldown.current = false;
-      }, 500); // 0.5 seconds
+      }, 500); // 0.5 seconds cooldown
     }
 
     lastAcceleration.current = acceleration;
-  }, [acceleration, onShake]);
+  }, [acceleration, onShake, isDesktop]);
 };

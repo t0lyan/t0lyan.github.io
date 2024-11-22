@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 
 export const useSensors = (tg: any) => {
   const [acceleration, setAcceleration] = useState({ x: 0, y: 0, z: 0 });
-  const [rotationRate, setRotationRate] = useState({ x: 0, y: 0, z: 0 });
   const [orientation, setOrientation] = useState({
     alpha: 0,
     beta: 0,
@@ -12,52 +11,46 @@ export const useSensors = (tg: any) => {
   useEffect(() => {
     if (!tg) return;
 
-    // Start accelerometer tracking
+    const handleAcceleration = () => {
+      setAcceleration({
+        x: tg.Accelerometer.x,
+        y: tg.Accelerometer.y,
+        z: tg.Accelerometer.z,
+      });
+    };
+
+    const handleOrientation = () => {
+      setOrientation({
+        alpha: tg.DeviceOrientation.alpha,
+        beta: tg.DeviceOrientation.beta,
+        gamma: tg.DeviceOrientation.gamma,
+      });
+    };
+
     tg.Accelerometer.start({ refresh_rate: 100 }, (started: boolean) => {
       if (started) {
-        tg.onEvent("accelerometer", () => {
-          setAcceleration({
-            x: tg.Accelerometer.x,
-            y: tg.Accelerometer.y,
-            z: tg.Accelerometer.z,
-          });
-        });
+        tg.onEvent("accelerometer", handleAcceleration);
+      } else {
+        console.error("Accelerometer not started");
       }
     });
 
-    // Start gyroscope tracking
-    tg.Gyroscope.start({ refresh_rate: 100 }, (started: boolean) => {
-      if (started) {
-        tg.onEvent("gyroscope", () => {
-          setRotationRate({
-            x: tg.Gyroscope.x,
-            y: tg.Gyroscope.y,
-            z: tg.Gyroscope.z,
-          });
-        });
-      }
-    });
-
-    // Start device orientation tracking
     tg.DeviceOrientation.start({ refresh_rate: 100 }, (started: boolean) => {
       if (started) {
-        tg.onEvent("device_orientation", () => {
-          setOrientation({
-            alpha: tg.DeviceOrientation.alpha,
-            beta: tg.DeviceOrientation.beta,
-            gamma: tg.DeviceOrientation.gamma,
-          });
-        });
+        tg.onEvent("device_orientation", handleOrientation);
+      } else {
+        console.error("DeviceOrientation not started");
       }
     });
 
-    // Cleanup on unmount
+    // Cleanup
     return () => {
       tg.Accelerometer.stop();
-      tg.Gyroscope.stop();
       tg.DeviceOrientation.stop();
+      tg.offEvent("accelerometer", handleAcceleration);
+      tg.offEvent("device_orientation", handleOrientation);
     };
   }, [tg]);
 
-  return { acceleration, rotationRate, orientation };
+  return { acceleration, orientation };
 };

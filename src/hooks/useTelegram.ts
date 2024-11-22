@@ -10,7 +10,9 @@ export const useTelegram = () => {
   const [tg, setTg] = useState<any>(null);
 
   useEffect(() => {
-    setTg(window.Telegram.WebApp);
+    if (window.Telegram) {
+      setTg(window.Telegram.WebApp);
+    }
   }, []);
 
   return tg;

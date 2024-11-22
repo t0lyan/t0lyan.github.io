@@ -1,7 +1,6 @@
 import { motion } from "framer-motion";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import Confetti from "react-confetti";
-import MySvg from "./assets/mySvg.svg";
 import { useSensors } from "./hooks/useSensors";
 import { useShakeDetection } from "./hooks/useShakeDetection";
 import { useTelegram } from "./hooks/useTelegram";
@@ -17,6 +16,8 @@ const App: React.FC = () => {
   const [cooldownTime, setCooldownTime] = useState<number>(0);
   const [shakeAnimation, setShakeAnimation] = useState<boolean>(false);
   const [isFirstTimeUser, setIsFirstTimeUser] = useState<boolean>(true);
+
+  const [isDesktop, setIsDesktop] = useState<boolean>(false);
 
   // Load global score from cloud storage
   useEffect(() => {
@@ -38,9 +39,12 @@ const App: React.FC = () => {
         tg.CloudStorage.setItem("isFirstTimeUser", "false");
       }
     });
+
+    // Check if desktop
+    setIsDesktop(!("ontouchstart" in window));
   }, [tg]);
 
-  const handleShake = () => {
+  const handleShake = useCallback(() => {
     const currentTime = Date.now();
 
     if (!isSessionActive) {
@@ -82,7 +86,7 @@ const App: React.FC = () => {
       // Session time exceeded
       setIsSessionActive(false);
     }
-  };
+  }, [isSessionActive, sessionStartTime, tg]);
 
   const startCooldown = (sessionDuration: number) => {
     const remainingTime = Math.max(0, 20 * 60 * 1000 - sessionDuration);
@@ -101,7 +105,7 @@ const App: React.FC = () => {
     }, 1000);
   };
 
-  useShakeDetection(acceleration, handleShake);
+  useShakeDetection(acceleration, handleShake, isDesktop);
 
   // Handle shake animation reset
   useEffect(() => {
@@ -126,15 +130,8 @@ const App: React.FC = () => {
     audio.play();
   };
 
-  // Animated background
-  const [backgroundPosition, setBackgroundPosition] = useState<number>(0);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setBackgroundPosition((prev) => prev + 0.5);
-    }, 50);
-    return () => clearInterval(interval);
-  }, []);
+  // Generate random dark gradient background
+  const background = `linear-gradient(135deg, #1a1a1a, #333333)`;
 
   // Leaderboard sharing
   const shareScore = () => {
@@ -149,41 +146,45 @@ const App: React.FC = () => {
     <div
       className="relative flex items-center justify-center h-screen overflow-hidden"
       style={{
-        background: "linear-gradient(135deg, #1a1a1a, #333333)",
-        backgroundPosition: `${backgroundPosition}%`,
-        backgroundSize: "200% 200%",
-        transition: "background-position 0.5s",
+        background,
       }}
     >
       {/* Display scores */}
       <div className="absolute top-4 left-4 bg-gray-800 bg-opacity-75 rounded-lg p-4">
-        <p className="text-white text-lg">Global Score: {globalScore}</p>
-        <p className="text-white text-lg">Session Score: {sessionScore}</p>
+        <p className="text-white text-lg font-semibold mb-2">Scores</p>
+        <div className="text-white text-sm mb-1">
+          Global Score: {globalScore}
+        </div>
+        <div className="text-white text-sm mb-1">
+          Session Score: {sessionScore}
+        </div>
         {cooldownTime > 0 && (
-          <p className="text-red-500 text-lg">
+          <div className="text-red-500 text-sm">
             Cooldown: {Math.ceil(cooldownTime / 1000)}s
-          </p>
+          </div>
         )}
         {/* Share Button */}
         <button
-          className="mt-2 bg-blue-500 text-white px-4 py-2 rounded"
+          className="mt-3 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
           onClick={shareScore}
         >
-          Share Score
+          Share My Score
         </button>
       </div>
 
       {/* User Guidance */}
       {isFirstTimeUser && (
-        <div className="absolute bottom-10 bg-gray-800 bg-opacity-75 text-white text-center rounded-lg p-4">
-          Shake your phone to increase your score!
+        <div className="absolute bottom-10 bg-gray-800 bg-opacity-75 text-white text-center rounded-lg p-4 mx-4">
+          <p className="font-semibold">Welcome!</p>
+          <p className="text-sm mt-1">
+            Shake your phone (or scroll up and down on desktop) to increase your
+            score!
+          </p>
         </div>
       )}
 
       {/* SVG with motion */}
-      <motion.img
-        src={MySvg}
-        alt="Interactive SVG"
+      <motion.div
         animate={{
           scale: shakeAnimation ? totalScale * 1.1 : totalScale,
           rotateX: rotateX,
@@ -191,33 +192,67 @@ const App: React.FC = () => {
         }}
         transition={{ duration: 0.3 }}
         style={{
-          width: "200px",
-          height: "auto",
           transformStyle: "preserve-3d",
         }}
-      />
+      >
+        <svg
+          width="200"
+          height="200"
+          viewBox="0 0 695.000000 1008.000000"
+          preserveAspectRatio="xMidYMid meet"
+        >
+          <defs>
+            <linearGradient id="svgGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#ff00cc" />
+              <stop offset="100%" stopColor="#333399" />
+            </linearGradient>
+          </defs>
+          <g
+            transform="translate(0.000000,1008.000000) scale(0.100000,-0.100000)"
+            fill="url(#svgGradient)"
+            stroke="none"
+          >
+            {/* [Your SVG paths go here] */}
+          </g>
+        </svg>
+      </motion.div>
 
       {/* Progress Indicators */}
-      <div className="absolute bottom-4 left-4 right-4">
-        <div className="w-full bg-gray-700 rounded-full h-2 mb-2">
-          <div
-            className="bg-blue-500 h-2 rounded-full"
-            style={{ width: `${(sessionScore / 1000) * 100}%` }}
-          ></div>
+      <div className="absolute bottom-4 left-4 right-4 px-4">
+        <div className="mb-2">
+          <div className="text-white text-sm mb-1">Session Progress</div>
+          <div className="w-full bg-gray-700 rounded-full h-3">
+            <div
+              className="bg-blue-500 h-3 rounded-full"
+              style={{ width: `${(sessionScore / 1000) * 100}%` }}
+            ></div>
+          </div>
         </div>
-        <div className="w-full bg-gray-700 rounded-full h-2">
-          <div
-            className="bg-green-500 h-2 rounded-full"
-            style={{ width: `${(globalScore / 1_000_000) * 100}%` }}
-          ></div>
+        <div>
+          <div className="text-white text-sm mb-1">Global Progress</div>
+          <div className="w-full bg-gray-700 rounded-full h-3">
+            <div
+              className="bg-green-500 h-3 rounded-full"
+              style={{ width: `${(globalScore / 1_000_000) * 100}%` }}
+            ></div>
+          </div>
         </div>
       </div>
 
       {/* Visual Feedback */}
       {sessionScore >= 1000 && <Confetti />}
 
-      {/* Sound Effects */}
-      <audio id="shake-sound" src="/sounds/shake.mp3" preload="auto"></audio>
+      {/* Debugging Information */}
+      <div className="absolute top-4 right-4 bg-gray-800 bg-opacity-75 rounded-lg p-4 text-white text-xs">
+        <p>Acceleration:</p>
+        <p>X: {acceleration.x.toFixed(2)}</p>
+        <p>Y: {acceleration.y.toFixed(2)}</p>
+        <p>Z: {acceleration.z.toFixed(2)}</p>
+        <p className="mt-2">Orientation:</p>
+        <p>Alpha: {orientation.alpha?.toFixed(2)}</p>
+        <p>Beta: {orientation.beta?.toFixed(2)}</p>
+        <p>Gamma: {orientation.gamma?.toFixed(2)}</p>
+      </div>
     </div>
   );
 };
